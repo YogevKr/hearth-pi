@@ -430,6 +430,14 @@ export function appServer(
       }
       if (req.method === "GET" && path === "/api/proactive")
         return json(res, 200, await proactive.settings(owner));
+      if (req.method === "GET" && path === "/api/event-rules")
+        return json(res, 200, await runtime.listHAEventRules(owner));
+      if (req.method === "POST" && path === "/api/event-rules")
+        return json(
+          res,
+          201,
+          await runtime.addHAEventRule(owner, await body(req)),
+        );
       const proactiveRoute =
         /^\/api\/proactive\/(briefing|enabled|watchers\/add|watchers\/remove)$/.exec(
           path,

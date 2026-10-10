@@ -14,6 +14,8 @@ import {
   BriefingSummaryService,
   resolveBriefingSummaryModel,
 } from "./briefing-summary.js";
+import { subscribeHAEvents } from "./ha-events.js";
+import { defaultSocket } from "./ha-websocket.js";
 
 try {
   const config = await loadConfig();
@@ -109,6 +111,7 @@ try {
     { home, workspace },
     ha.actions,
     config.thinkingLevel,
+    config.policy.access === "admin" ? ["*"] : config.policy.entities,
   );
   // Signed-in OAuth providers' models become selectable per session. The
   // offline demonstration keeps its faux-only registry (no real inference).
@@ -146,6 +149,43 @@ try {
     app.server.listen(config.port, config.host, resolve);
   });
   proactive.start();
+  // Keep a bounded, durable copy of approved HA events. HA does not replay
+  // events after a disconnect; reconnects leave a gap for state reconciliation.
+  if (
+    config.haToken &&
+    (config.policy.access === "admin" || config.policy.entities.length)
+  ) {
+    const eventAbort = new AbortController();
+    void subscribeHAEvents(
+      defaultSocket,
+      config.haToken,
+      (value) => ha.sanitize(value),
+      {
+        eventTypes: [
+          "state_changed",
+          "call_service",
+          "automation_triggered",
+          "device_automation_triggered",
+        ],
+        entities: config.policy.entities,
+      },
+      async (event) => {
+        const entityId =
+          typeof event.data.entity_id === "string"
+            ? event.data.entity_id
+            : null;
+        const eventId = await runtime.recordHAEvent({
+          eventType: event.event_type,
+          entityId,
+          data: event.data as import("./documents.js").JsonObject,
+          timeFired: event.time_fired,
+        });
+        await runtime.routeHAEvent(event, eventId);
+      },
+      eventAbort.signal,
+    ).catch((error) => console.error("HA event subscriber stopped", error));
+    process.once("SIGTERM", () => eventAbort.abort());
+  }
   console.info(
     "Hearth Pi ready. Experimental; server-side authorization enforced.",
   );

@@ -26,6 +26,10 @@ import {
   Proposals,
   HomePermissions,
   ModelSelection,
+  HAEventLog,
+  HAEventRules,
+  type HAEventRule,
+  type StoredHAEvent,
 } from "./documents.js";
 import type { HomeActions } from "./home-actions.js";
 import { HomeCanvas, scopedCanvas } from "./canvas.js";
@@ -37,7 +41,10 @@ import {
   text,
   requestPattern,
   redactor,
+  object,
+  entityPattern,
 } from "./safety.js";
+import { HA_EVENT_TYPES, type HAEvent } from "./ha-events.js";
 import {
   IMAGE_LIMITS,
   countImages,
@@ -61,6 +68,7 @@ export class Runtime {
     readonly defaultThinkingLevel: ModelThinkingLevel,
     readonly redact: (value: string) => string,
     readonly groups: { home: Extension[]; workspace: Extension[] },
+    readonly eventEntities: readonly string[],
   ) {}
   static async open(
     dataDir: string,
@@ -74,6 +82,7 @@ export class Runtime {
     },
     homeActions?: HomeActions,
     defaultThinkingLevel: ModelThinkingLevel = "off",
+    eventEntities: readonly string[] = [],
   ): Promise<Runtime> {
     insist(
       supportsThinking(
@@ -130,7 +139,12 @@ export class Runtime {
         defaultThinkingLevel,
         redactor(secrets),
         groups,
+        eventEntities,
       );
+      await harness.commit(async (tx) => {
+        await tx.doc(HAEventLog);
+        await tx.doc(HAEventRules);
+      }, ctx);
       homeActions?.attach(runtime);
       await homeActions?.initialize();
       const unfinished = await harness.inspect(ctx);
@@ -194,6 +208,101 @@ export class Runtime {
     } catch (error) {
       await db.close();
       throw error;
+    }
+  }
+  /** Store one validated Home Assistant event before later processing. */
+  async recordHAEvent(event: Omit<StoredHAEvent, "id" | "receivedAt">) {
+    return this.admission.run(async () =>
+      this.harness.commit(async (tx) => {
+        const log = await tx.doc(HAEventLog);
+        const id = log.next++;
+        log.events.push({ ...event, id, receivedAt: Date.now() });
+        if (log.events.length > 1000)
+          log.events.splice(0, log.events.length - 1000);
+        return id;
+      }, ctx),
+    );
+  }
+  async addHAEventRule(owner: string, value: unknown) {
+    const input = object(value, [
+      "conversation_id",
+      "event_type",
+      "entity_id",
+      "prompt",
+    ]);
+    const conversationId = Number(input.conversation_id);
+    const eventType = text(input.event_type, 80);
+    const entityId = text(input.entity_id, 200);
+    const prompt = text(input.prompt, 1000);
+    insist(Number.isSafeInteger(conversationId) && conversationId > 0);
+    insist(
+      (HA_EVENT_TYPES as readonly string[]).includes(eventType),
+      "invalid_event_type",
+    );
+    insist(entityPattern.test(entityId), "invalid_entity_id");
+    insist(
+      this.eventEntities.includes("*") || this.eventEntities.includes(entityId),
+      "entity_not_allowed",
+      403,
+    );
+    await this.session(owner, conversationId);
+    return this.harness.commit(async (tx) => {
+      const doc = await tx.doc(HAEventRules);
+      insist(doc.rules.length < 200, "event_rule_limit", 429);
+      const rule: HAEventRule = {
+        id: doc.next++,
+        owner,
+        conversationId,
+        eventType,
+        entityId,
+        prompt,
+        enabled: true,
+      };
+      doc.rules.push(rule);
+      return rule;
+    }, ctx);
+  }
+  async listHAEventRules(owner: string) {
+    return (
+      (await this.harness.snapshot(HAEventRules, ctx))?.rules.filter(
+        (r) => r.owner === owner,
+      ) ?? []
+    );
+  }
+  async routeHAEvent(event: HAEvent, eventId: number) {
+    const rules = (await this.harness.snapshot(HAEventRules, ctx))?.rules ?? [];
+    const direct = event.data.entity_id;
+    const serviceData = event.data.service_data as
+      | { entity_id?: unknown }
+      | undefined;
+    const rawEntityId =
+      typeof direct === "string"
+        ? direct
+        : serviceData && typeof serviceData === "object"
+          ? serviceData.entity_id
+          : null;
+    const entityIds = Array.isArray(rawEntityId)
+      ? rawEntityId.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : typeof rawEntityId === "string"
+        ? [rawEntityId]
+        : [];
+    for (const rule of rules) {
+      if (
+        !rule.enabled ||
+        rule.eventType !== event.event_type ||
+        !entityIds.includes(rule.entityId)
+      )
+        continue;
+      const requestId = `ha-event-${eventId}-${rule.id}`;
+      const message = `${rule.prompt}\n\nEvent data:\n${JSON.stringify(event.data)}`;
+      await this.submit(
+        rule.owner,
+        rule.conversationId,
+        requestId,
+        message,
+      ).catch(() => undefined);
     }
   }
   async list(owner: string) {

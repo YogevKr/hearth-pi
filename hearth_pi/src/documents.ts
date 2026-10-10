@@ -18,6 +18,43 @@ export const Catalog = defineDoc<{ items: SessionItem[] }>({
   initial: () => ({ items: [] }),
   checkpointWhen,
 });
+export type StoredHAEvent = {
+  id: number;
+  eventType: string;
+  entityId: string | null;
+  data: JsonObject;
+  timeFired: string;
+  receivedAt: number;
+};
+export const HAEventLog = defineDoc<{
+  next: number;
+  events: StoredHAEvent[];
+}>({
+  kind: "hearth.ha-events",
+  version: 1,
+  scope: "session",
+  initial: () => ({ next: 1, events: [] }),
+  checkpointWhen,
+});
+export type HAEventRule = {
+  id: number;
+  owner: string;
+  conversationId: number;
+  eventType: string;
+  entityId: string;
+  prompt: string;
+  enabled: boolean;
+};
+export const HAEventRules = defineDoc<{
+  next: number;
+  rules: HAEventRule[];
+}>({
+  kind: "hearth.ha-event-rules",
+  version: 1,
+  scope: "session",
+  initial: () => ({ next: 1, rules: [] }),
+  checkpointWhen,
+});
 // Revision lives with the conversation so a model choice and its compare-and-swap
 // advance in the same durable commit as pi.agent.
 export const ModelSelection = defineDoc<{ revision: number }>({
