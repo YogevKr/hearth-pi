@@ -28,6 +28,45 @@ export type HAEventSubscription = {
   reconnectMs?: number;
 };
 
+type StateSnapshot = {
+  state: unknown;
+  attributes: unknown;
+};
+
+/** Return a stable JSON representation for values received from Home Assistant. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
+function stateSnapshot(event: HAEvent): string | undefined {
+  if (event.event_type !== "state_changed") return undefined;
+  const newState = event.data.new_state;
+  if (!newState || typeof newState !== "object") return undefined;
+  const value = newState as Partial<StateSnapshot>;
+  return stableJson({ state: value.state, attributes: value.attributes ?? {} });
+}
+
+/** Suppress repeated Home Assistant state samples without suppressing real changes. */
+export function shouldDeliverHAEvent(
+  event: HAEvent,
+  previousSnapshots: Map<string, string>,
+): boolean {
+  const snapshot = stateSnapshot(event);
+  if (snapshot === undefined) return true;
+  const entityId = event.data.entity_id;
+  if (typeof entityId !== "string") return true;
+  if (previousSnapshots.get(entityId) === snapshot) return false;
+  previousSnapshots.set(entityId, snapshot);
+  return true;
+}
+
 type EventMessage = {
   type?: unknown;
   id?: unknown;
@@ -58,6 +97,7 @@ export async function subscribeHAEvents(
   for (const eventType of eventTypes)
     insist(HA_EVENT_TYPES.includes(eventType), "ha_event_scope", 400);
   const entities = new Set(subscription.entities ?? []);
+  const previousSnapshots = new Map<string, string>();
   const reconnectMs = Math.max(100, subscription.reconnectMs ?? 1000);
   while (!signal?.aborted) {
     try {
@@ -67,6 +107,7 @@ export async function subscribeHAEvents(
         redact,
         eventTypes,
         entities,
+        previousSnapshots,
         onEvent,
         signal,
       );
@@ -96,6 +137,7 @@ async function subscribeOnce(
   redact: (value: string) => string,
   eventTypes: readonly HAEventType[],
   entities: ReadonlySet<string>,
+  previousSnapshots: Map<string, string>,
   onEvent: (event: HAEvent) => Promise<void> | void,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -184,6 +226,7 @@ async function subscribeOnce(
         )
       : typeof entityId === "string" && entities.has(entityId);
     if (entities.size && !matches) return;
+    if (!shouldDeliverHAEvent(event, previousSnapshots)) return;
     void Promise.resolve(onEvent(event)).catch(fail);
   };
   try {
