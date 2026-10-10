@@ -14,7 +14,7 @@ LABEL io.hass.name="Hearth Judge" \
       io.hass.type="addon" \
       io.hass.arch="${BUILD_ARCH}" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/cosmyo/ha-pi-durable"
+      org.opencontainers.image.source="https://github.com/YogevKr/hearth-pi"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends jq ca-certificates gosu \

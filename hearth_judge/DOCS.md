@@ -8,9 +8,9 @@ This is an experimental community App/add-on, not an official Home Assistant or 
 
 Use the same repository as Hearth Pi.
 
-[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fcosmyo%2Fha-pi-durable)
+[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FYogevKr%2Fhearth-pi)
 
-1. Add the repository (button above, or **Settings → Apps → Install app → ⋮ → Repositories**, add `https://github.com/cosmyo/ha-pi-durable`).
+1. Add the repository (button above, or **Settings → Apps → Install app → ⋮ → Repositories**, add `https://github.com/YogevKr/hearth-pi`).
 2. Find **Hearth Judge** in the repository card (separate from **Hearth Pi**) and select **Install**. The first build compiles no application code — it just lays the official llama.cpp server image with a thin wrapper script on top — but still takes a few minutes on a Raspberry Pi 5.
 3. Open the **Configuration** tab, choose a `model` and (optionally) an `api_key`, then **Save** and **Start**. On first start the add-on downloads the configured model into its persistent `/data` (a few hundred MB to ~1.2 GB depending on model, one time only) and verifies it against a pinned sha256 before use; watch the add-on log. It refuses to start if that verification fails or if a model's pin is missing.
 4. There is no sidebar entry, ingress panel or Web UI (`--no-webui`) to open: this add-on is a backend service for other add-ons only. Confirm it is listening by checking the log for `starting llama-server`.

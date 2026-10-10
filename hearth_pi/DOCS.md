@@ -4,10 +4,10 @@ Use an **authorized test Home Assistant OS installation**, an administrator acco
 
 ## Add the repository and install
 
-[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fcosmyo%2Fha-pi-durable)
+[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FYogevKr%2Fhearth-pi)
 
 1. Click the button, enter/select your HA instance URL and confirm **Add**. The official My Home Assistant page only opens the repository dialog; you still review and install the App yourself.
-2. Alternatively, open **Settings → Apps → Install app** (App store), select **⋮ → Repositories**, add `https://github.com/cosmyo/ha-pi-durable` and select **Add**.
+2. Alternatively, open **Settings → Apps → Install app** (App store), select **⋮ → Repositories**, add `https://github.com/YogevKr/hearth-pi` and select **Add**.
 3. Find **Hearth Pi** in the new repository card, open it and select **Install**. The preview is built on your HA host; allow several minutes and check the App/Supervisor logs if installation fails. No manual Git, Node, SSH or Docker setup is required for Home mode.
 4. Open the App's **Configuration** tab and complete the following options **before starting**. Older HA versions call Apps **Add-ons** and Install app **Add-on store**.
 

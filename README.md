@@ -6,7 +6,7 @@
 
 **Independent community App · 0.3.2 · experimental.** Not an official Home Assistant or Pi product. The pinned Pi 1.0.1 APIs are experimental. This is a technical preview, not a production recommendation or external security audit.
 
-[![Checks and native container smoke](https://github.com/cosmyo/ha-pi-durable/actions/workflows/check.yml/badge.svg)](https://github.com/cosmyo/ha-pi-durable/actions/workflows/check.yml)
+[![Checks and native container smoke](https://github.com/YogevKr/hearth-pi/actions/workflows/check.yml/badge.svg)](https://github.com/YogevKr/hearth-pi/actions/workflows/check.yml)
 
 ![Hearth Pi offline demonstration and reload](docs/images/offline-demo.gif)
 
@@ -45,14 +45,14 @@ Open `http://127.0.0.1:8099/`; username **hearth**, password as entered. The rea
 
 Requires **Home Assistant OS**, an administrator account and an **amd64 or aarch64** host. Use an authorized test installation with a backup; this is an experimental third-party App, not HACS or a Devices & services integration.
 
-[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fcosmyo%2Fha-pi-durable)
+[![Add Hearth Pi's repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FYogevKr%2Fhearth-pi)
 
 1. Click the button, select your Home Assistant URL and confirm **Add**. This adds the repository; it does not install or start the App automatically.
 2. In **Settings → Apps → Install app** (App store), find **Hearth Pi** and select **Install**. The current preview builds on your HA host, so the initial installation can take several minutes. No Git clone, Node installation, SSH or Docker commands are needed for Home mode.
 3. Before starting, follow [the required configuration example](hearth_pi/DOCS.md#configure-before-starting): your HA user ID, exact HTTPS origin, provider and exact entity IDs. Empty `allowed_entities` means **no HA entity access**, not automatic discovery of your whole home.
 4. Save, **Start**, enable **Show in sidebar**, then select **Open Web UI**. Open **ChatGPT login** if using the subscription provider, and create a **Home** session for HA questions.
 
-Manual fallback: **Settings → Apps → Install app → ⋮ → Repositories**, add `https://github.com/cosmyo/ha-pi-durable`, then follow steps 2–4. Older HA versions call Apps **Add-ons** and Install app **Add-on store**. Home Assistant Container/Core without Supervisor cannot install this App.
+Manual fallback: **Settings → Apps → Install app → ⋮ → Repositories**, add `https://github.com/YogevKr/hearth-pi`, then follow steps 2–4. Older HA versions call Apps **Add-ons** and Install app **Add-on store**. Home Assistant Container/Core without Supervisor cannot install this App.
 
 The complete App build context is `hearth_pi/`. It requests Ingress, HA's scoped API proxy and private `/data`, plus **only its own** `addon_config` bridge directory. No public ports, HA Core configuration mounts, Supervisor-admin/auth/Docker APIs or added privileges. The optional coding worker requires a trusted operator to create a separately constrained container; the App/agent cannot create Docker containers. [Workspace installation and boundaries](docs/workspace.md).
 
